@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#AD1457">
+<title>Romee Tasks</title>
+
+<link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiUm9tZWUgVGFza3MiLCJzaG9ydF9uYW1lIjoiUm9tZWUiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJ0aGVtZV9jb2xvciI6IiNBRDE0NTciLCJiYWNrZ3JvdW5kX2NvbG9yIjoiI0Y4QkJEMCJ9">
+
+<style>
+:root{--pink-light:#F8BBD0;--pink:#EC407A;--pink-dark:#AD1457}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;margin:0;background:var(--pink-light);font:700 16px/1 "Courier New",monospace;color:#000;overflow-x:hidden}
+
+/* visually hidden maar aanklikbaar */
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- HEADER ---------- */
+header{position:sticky;top:0;z-index:1000;padding:.6em 1em;display:grid;grid-template-columns:auto 1fr auto;gap:1em;align-items:center;background:linear-gradient(var(--pink-dark),var(--pink));color:#fff;box-shadow:0 2px 5px #0005}
+#logo{font-size:clamp(1.4rem,6vw,2.6rem);text-shadow:2px 2px 4px #0006}
+.counts{display:flex;gap:1.2em;justify-content:center}
+.count{display:flex;align-items:center}
+.count svg{width:1em;height:1em;fill:currentColor}
+.count span{margin-left:.3em;font-size:1.05em}
+.header-actions{display:flex;gap:.6em}
+.btn{padding:.45em .9em;border:none;border-radius:.6em;background:#fff;color:var(--pink-dark);font-weight:bold;cursor:pointer;box-shadow:0 2px 4px #0003;transition:filter .2s}
+.btn:hover{filter:brightness(1.1)}
+.note-trigger{min-width:4.6rem;border-radius:1.2em}
+
+/* ---------- TIMELINE ---------- */
+main{padding:1em .5em;display:flex;flex-direction:column;gap:.4em}
+.slot{display:grid;grid-template-columns:5ch 7rem 1fr;gap:.5em;align-items:start;border-bottom:1px solid #0002;padding:.5em 0}
+.time{font-size:1.1rem}
+.icons{display:flex;gap:1em}
+.holder{width:3rem;height:3rem;border-radius:50%;background:var(--pink-dark);display:flex;align-items:center;justify-content:center;position:relative;border:none;cursor:pointer;box-shadow:0 2px 6px #0004}
+.holder::after{content:"";position:absolute;inset:0;border-radius:50%;background:linear-gradient(rgba(255,255,255,.6),rgba(255,255,255,0) 70%)}
+.holder .icon{width:60%;height:60%;opacity:0;transform:scale(.5);transition:.3s}
+.holder.active .icon{opacity:1;transform:scale(1);color:#fff}
+.notes-container{display:flex;flex-direction:column;gap:.35em}
+.note{background:#FFEB3B;padding:.55em .6em;border-radius:.3em;box-shadow:0 2px 4px #0003;cursor:grab;user-select:none;touch-action:none}
+.note:active{cursor:grabbing}
+
+/* ---------- TRASH ---------- */
+#trash{position:fixed;bottom:1.2em;right:1.2em;width:3.7rem;height:3.7rem;border-radius:50%;background:#333;color:#fff;font-size:1.9rem;display:flex;align-items:center;justify-content:center;opacity:.75;transition:.2s;z-index:1200}
+#trash.drag-target{transform:scale(1.2);opacity:1}
+
+/* ---------- POP-UP ---------- */
+#popup{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:1100}
+.popup-card{width:92%;max-width:420px;background:var(--pink-light);border-radius:.6em;padding:1.2em;box-shadow:0 4px 12px #0006;display:flex;flex-direction:column;gap:1em}
+textarea{width:100%;min-height:6rem;padding:.7em;border:2px solid var(--pink-dark);border-radius:.5em;font-family:inherit;font-weight:bold;font-size:1rem;background:#fff;color:#000;resize:vertical}
+textarea::placeholder{color:#0008}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:.8em}
+.popup-btn{padding:.7em;border:none;border-radius:.6em;font-weight:bold;font-size:1rem;box-shadow:0 2px 4px #0003;cursor:pointer}
+.time-select{background:#fff;color:var(--pink-dark)}
+.popup-btn:disabled{opacity:.4;cursor:not-allowed}
+.create{background:var(--pink-dark);color:#fff}
+
+@keyframes ripple{to{transform:scale(2.4);opacity:0}}
+.ripple{position:absolute;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.5);transform:scale(0);animation:ripple .6s ease-out;pointer-events:none}
+@media(max-width:430px){header{grid-template-columns:1fr}.counts{justify-content:flex-start}}
+</style>
+</head>
+
+<body>
+<header>
+  <h1 id="logo">Romee Tasks</h1>
+  <div class="counts">
+    <div class="count"><svg viewBox="0 0 16 16"><use href="#icon-water"/></svg><span id="water-total">0</span></div>
+    <div class="count"><svg viewBox="0 0 16 16"><use href="#icon-food"/></svg><span id="food-total">0</span></div>
+  </div>
+  <div class="header-actions">
+    <button class="btn note-trigger" id="note-trigger">NOTITIE</button>
+    <button class="btn" id="clear-all">dlt&nbsp;all</button>
+  </div>
+</header>
+
+<main id="timeline"></main>
+<div id="trash">🗑️</div>
+
+<!-- POP-UP -->
+<div id="popup">
+  <div class="popup-card">
+    <textarea id="note-text" placeholder="schrijf hier je notitie"></textarea>
+    <div class="btn-row">
+      <button id="choose-time" class="popup-btn time-select">Kies&nbsp;tijd</button>
+      <button id="create-note" class="popup-btn create" disabled>Aanmaken</button>
+    </div>
+    <input id="time-picker" type="time" step="3600" class="sr-only">
+  </div>
+</div>
+
+<!-- SVG -->
+<svg style="position:absolute;width:0;height:0">
+  <symbol id="icon-water" viewBox="0 0 16 16"><path d="M7.21.8C7.69.295 8 0 8 0q.164.544.371 1.038c.812 1.946 2.073 3.35 3.197 4.6C12.878 7.096 14 8.345 14 10a6 6 0 0 1-12 0C2 6.668 5.58 2.517 7.21.8z"/></symbol>
+  <symbol id="icon-food" viewBox="0 0 16 16"><path d="M3 0h1v6H3zm2 0h1v6H5zm2 0h1v6H7zm-4 6h5v10H3zm7.5-6L12 10v6H9V10z"/></symbol>
+</svg>
+
+<script>
+(()=>{'use strict';
+const STORAGE='RomeeTasksData', NOTES='RomeeTasksNotes', RESET='RomeeTasksLastReset';
+const times=[...Array(17).keys()].map(i=>String(i+7).padStart(2,'0')+':00').concat('00:00');
+let data=JSON.parse(localStorage.getItem(STORAGE)||'{}');
+let notes=JSON.parse(localStorage.getItem(NOTES)||'{}');
+times.forEach(t=>{data[t]??={water:false,food:false};notes[t]??=[]});
+
+/* ---------- BUILD TIMELINE ---------- */
+const timeline=document.querySelector('#timeline');
+const holder=t=>`<button class="holder ${t}" data-type="${t}"><svg class="icon" viewBox="0 0 16 16"><use href="#icon-${t}"/></svg></button>`;
+timeline.innerHTML=times.map(t=>`
+  <div class="slot" data-time="${t}">
+    <span class="time">${t}</span>
+    <div class="icons">${holder('water')}${holder('food')}</div>
+    <div class="notes-container"></div>
+  </div>`).join('');
+
+/* ---------- COUNTS ---------- */
+const wTot=document.querySelector('#water-total'),fTot=document.querySelector('#food-total');
+const updateCounts=()=>{let w=0,f=0;times.forEach(t=>{if(data[t].water)w++;if(data[t].food)f++});wTot.textContent=w;fTot.textContent=f};
+document.querySelectorAll('.slot').forEach(s=>{const t=s.dataset.time;['water','food'].forEach(tp=>data[t][tp]&&s.querySelector('.'+tp).classList.add('active'));});
+updateCounts();
+
+/* ---------- HOLDER TOGGLE ---------- */
+timeline.addEventListener('click',e=>{
+  const btn=e.target.closest('.holder');if(!btn)return;
+  const r=document.createElement('span');r.className='ripple';const rect=btn.getBoundingClientRect();r.style.left=e.clientX-rect.left+'px';r.style.top=e.clientY-rect.top+'px';btn.appendChild(r);setTimeout(()=>r.remove(),600);
+  setTimeout(()=>{const time=btn.closest('.slot').dataset.time,tp=btn.dataset.type;btn.classList.toggle('active');data[time][tp]=btn.classList.contains('active');localStorage.setItem(STORAGE,JSON.stringify(data));updateCounts();},120);
+});
+
+/* ---------- CLEAR ALL ---------- */
+document.querySelector('#clear-all').onclick=()=>{if(!confirm('Alles verwijderen?'))return;document.querySelectorAll('.holder.active').forEach(b=>b.classList.remove('active'));times.forEach(t=>data[t]={water:false,food:false});localStorage.setItem(STORAGE,JSON.stringify(data));updateCounts();};
+
+/* ---------- NOTES ---------- */
+function saveNotes(){localStorage.setItem(NOTES,JSON.stringify(notes))}
+function renderNotes(time){
+  const wrap=timeline.querySelector(`.slot[data-time="${time}"] .notes-container`);wrap.innerHTML='';
+  notes[time].forEach((txt,i)=>{const n=document.createElement('div');n.className='note';n.textContent=txt;n.dataset.time=time;n.dataset.index=i;makeDraggable(n);wrap.appendChild(n);});
+}
+times.forEach(renderNotes);
+
+/* ---------- POP-UP ---------- */
+const popup=document.querySelector('#popup'),noteText=document.querySelector('#note-text'),picker=document.querySelector('#time-picker'),btnTime=document.querySelector('#choose-time'),btnCreate=document.querySelector('#create-note');
+let chosen='';
+document.querySelector('#note-trigger').onclick=()=>{popup.style.display='flex';noteText.value='';chosen='';btnTime.textContent='Kies tijd';btnCreate.disabled=true;noteText.focus();}
+popup.addEventListener('click',e=>{if(e.target===popup)popup.style.display='none'});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')popup.style.display='none'});
+noteText.oninput=()=>btnCreate.disabled=!(noteText.value.trim()&&chosen);
+btnTime.onclick=()=>{try{picker.showPicker()}catch{}picker.focus();picker.click()};
+picker.onchange=()=>{if(!picker.value)return;chosen=picker.value.slice(0,2).padStart(2,'0')+':00';btnTime.textContent=chosen;btnCreate.disabled=!(noteText.value.trim()&&chosen)};
+btnCreate.onclick=()=>{const txt=noteText.value.trim();if(!(txt&&chosen))return;notes[chosen].push(txt);saveNotes();renderNotes(chosen);popup.style.display='none'};
+
+/* ---------- DRAG/TRASH ---------- */
+const trash=document.querySelector('#trash');let drag=null,timer=null;
+function makeDraggable(el){
+  const start=e=>{e.preventDefault();timer=setTimeout(()=>beginDrag(e,el),400)};
+  const cancel=()=>clearTimeout(timer);
+  ['mousedown','touchstart'].forEach(ev=>el.addEventListener(ev,start));
+  ['mouseup','mouseleave','touchend','touchmove'].forEach(ev=>el.addEventListener(ev,cancel));
+}
+function beginDrag(e,el){drag=el;el.style.position='fixed';el.style.zIndex='1500';move(e);trash.classList.add('drag-target');window.addEventListener('mousemove',move);window.addEventListener('touchmove',move,{passive:false});window.addEventListener('mouseup',end);window.addEventListener('touchend',end);}
+function move(e){const p=e.touches?e.touches[0]:e;drag.style.left=p.clientX-drag.offsetWidth/2+'px';drag.style.top=p.clientY-drag.offsetHeight/2+'px'}
+function end(e){const p=e.changedTouches?e.changedTouches[0]:e,rect=trash.getBoundingClientRect();if(p.clientX>=rect.left&&p.clientX<=rect.right&&p.clientY>=rect.top&&p.clientY<=rect.bottom){const {time,index}=drag.dataset;notes[time].splice(index,1);saveNotes();renderNotes(time);}drag.removeAttribute('style');trash.classList.remove('drag-target');window.removeEventListener('mousemove',move);window.removeEventListener('touchmove',move);window.removeEventListener('mouseup',end);window.removeEventListener('touchend',end);drag=null;}
+
+/* ---------- RESET 01:00 ---------- */
+(function autoReset(){const now=new Date(),today=now.toISOString().slice(0,10);if(localStorage.getItem(RESET)!==today&&now.getHours()>=1){localStorage.setItem(RESET,today);document.querySelectorAll('.holder.active').forEach(b=>b.classList.remove('active'));times.forEach(t=>data[t]={water:false,food:false});localStorage.setItem(STORAGE,JSON.stringify(data));updateCounts();}const next=new Date(now);next.setHours(1,0,0,0);if(next<=now)next.setDate(next.getDate()+1);setTimeout(autoReset,next-now)})();
+
+/* ---------- SERVICE WORKER ---------- */
+if('serviceWorker'in navigator){
+  const sw=`self.addEventListener('install',e=>e.waitUntil(caches.open('rt-v6').then(c=>c.addAll(['./']))));self.addEventListener('fetch',e=>{if(e.request.mode==='navigate'){e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))}});`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'text/javascript'})),{scope:'./'});
+}
+})();
+</script>
+</body>
+</html>
